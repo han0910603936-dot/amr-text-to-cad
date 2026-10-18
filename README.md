@@ -81,6 +81,15 @@ C:\Users\jeff2\.cad3d\venv\Scripts\python.exe -X utf8 tools\view.py STEP\l_brack
 
 ## 更新紀錄
 
+### 2026-10-18（平行夾爪）
+- 新增齒輪齒條式平行夾爪 `src/parallel_gripper.py`：主體、前蓋、小齒輪（32 齒、模數 1.5）、齒條夾爪（印 2 個）
+- 伺服轉 180° 時全開 150.8 mm（轉 155° 就有 130 mm）
+- 手腕和小齒輪都用 MATRIX RC Servo Horn Wheel（13-0002）固定，M4×12 螺絲；
+  舵盤尺寸取自 MATRIX 官方 Studio 2.0 零件檔
+- 干涉檢查 `checks/parallel_gripper_check.py`：全關到全開取 9 個位置，零件互不干涉
+- 截圖工具改用 z-buffer 判斷邊線遮擋，零件多的組合圖也能快速產生
+- ⚠ 夾爪伺服馬達尺寸還是假設值（標準尺寸），要量實物確認
+
 ### 2026-10-18
 - 建立第一階段工具：Python 3.13 環境、`cadkit` 建模函式庫（存檔、螺絲孔、列印限制）
 - 列印檢查 `tools/dfm_check.py`、四視圖截圖 `tools/snapshot.py`、瀏覽器預覽 `tools/view.py`

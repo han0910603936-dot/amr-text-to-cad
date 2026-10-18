@@ -71,7 +71,7 @@ def _rasterize(tris2d, depth, shade, lo, hi, px):
         win = inside & (zz > region)
         region[win] = zz[win]
         img[y0:y1 + 1, x0:x1 + 1][win] = (*(base * s), 1.0)
-    return img
+    return img, zbuf, scale
 
 
 def _draw(ax, mesh, view, up, px=520):
@@ -83,12 +83,12 @@ def _draw(ax, mesh, view, up, px=520):
 
     pts = mesh.vertices @ np.column_stack([right, upv])
     lo, hi = pts.min(axis=0), pts.max(axis=0)
-    img = _rasterize(tris2d, tris @ d, shade, lo, hi, px)
+    img, zbuf, scale = _rasterize(tris2d, tris @ d, shade, lo, hi, px)
     span = (hi - lo).max()
     ax.imshow(img, origin="lower", interpolation="antialiased", zorder=2,
               extent=(lo[0], lo[0] + img.shape[1] * span / px, lo[1], lo[1] + img.shape[0] * span / px))
 
-    # 特徵線：相鄰兩面夾角大、至少一面朝向觀看者；切成小段，往觀看者方向被擋住的段不畫
+    # 特徵線：相鄰兩面夾角大、至少一面朝向觀看者；切成小段，用 z-buffer 判斷被擋住的段不畫
     sharp = mesh.face_adjacency_angles > FEATURE_ANGLE
     facing = front[mesh.face_adjacency[sharp]].any(axis=1)
     edges = mesh.vertices[mesh.face_adjacency_edges[sharp][facing]]
@@ -96,9 +96,17 @@ def _draw(ax, mesh, view, up, px=520):
         t = np.linspace(0, 1, EDGE_SEGMENTS + 1)[:, None, None]
         pts3 = edges[:, 0] + t * (edges[:, 1] - edges[:, 0])          # (段數+1, 邊數, 3)
         segs = np.stack([pts3[:-1], pts3[1:]], axis=2).reshape(-1, 2, 3)
-        mids = segs.mean(axis=1) + d * mesh.scale * 1e-4
-        hidden = mesh.ray.intersects_any(mids, np.tile(d, (len(mids), 1)))
-        segs = segs[~hidden]
+        mids = segs.mean(axis=1)
+        uv = np.floor((np.column_stack([mids @ right, mids @ upv]) - lo) * scale).astype(int)
+        h, w = zbuf.shape
+        near = np.full(len(mids), -np.inf)
+        for du in (-1, 0, 1):                       # 邊線剛好在輪廓上，取附近 3×3 像素最前面的深度
+            for dv in (-1, 0, 1):
+                u = np.clip(uv[:, 0] + du, 0, w - 1)
+                v = np.clip(uv[:, 1] + dv, 0, h - 1)
+                near = np.maximum(near, zbuf[v, u])
+        visible = mids @ d >= near - 2.5 / scale
+        segs = segs[visible]
         ax.add_collection(LineCollection(np.stack([segs @ right, segs @ upv], axis=-1),
                                          colors="#3a3a3a", linewidths=0.6, zorder=3))
 
