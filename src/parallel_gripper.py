@@ -52,7 +52,7 @@ RACK_BASE = 8.0
 RACK_Z0 = PITCH_R - MODULE            # 齒條齒尖 22.5
 RACK_Z1 = PITCH_R + 1.25 * MODULE + RACK_BASE      # 齒條背面 33.9
 BODY_TOP = RACK_Z1 + FIT + WALL + 2.0  # 上面多 2 mm：伺服固定耳的螺絲孔
-BODY_BOTTOM = -(RACK_Z1 + FIT) - 10.0  # 底下留 10 mm 實心給手腕舵盤的 M4 螺絲
+BODY_BOTTOM = -(RACK_Z1 + FIT) - 12.0  # 底下留 12 mm 實心：M4 孔深 9.5，離齒條隧道還有 2.5 mm
 
 # ---------- 齒條夾爪 ----------
 RACK_TEETH = 27                       # 奇數；長 127.2
@@ -138,7 +138,8 @@ def body():
     part -= ear + top_case
     for dz in (-SERVO_HOLE_DL / 2, SERVO_HOLE_DL / 2):
         for dx in (-SERVO_HOLE_DW / 2, SERVO_HOLE_DW / 2):
-            part -= Pos(dx, EAR_FRONT_Y, SERVO_CZ + dz) * Rot(-90, 0, 0) * fx.tap_hole("M3", 8)
+            # 孔從固定耳座面往前（+Y）鑽進機身，螺絲從背面口袋鎖進來
+            part -= Pos(dx, EAR_FRONT_Y, SERVO_CZ + dz) * Rot(90, 0, 0) * fx.tap_hole("M3", 8)
     # 手腕 MATRIX 舵盤：直接鎖在機身底面
     for hx, hy in WRIST_HOLES:
         part -= Pos(hx, WRIST_Y + hy, BODY_BOTTOM) * Rot(180, 0, 0) * fx.tap_hole("M4", 9.5)
