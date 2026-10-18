@@ -195,8 +195,13 @@ def assembly(opening: float = 0.0):
 if __name__ == "__main__":
     print(f"全開 {OPENING:.0f} mm（每邊 {STROKE:.1f}），小齒輪要轉 {PINION_TURN_DEG:.0f}°；"
           f"齒條長 {RACK_LEN:.1f}，全關時外端 X={JAW_END:.1f}")
-    save(body(), "parallel_gripper_body")
-    save(pinion(), "parallel_gripper_pinion")
-    save(jaw(), "parallel_gripper_jaw")
+    # STEP 用組裝座標；STL/3MF 轉成列印方向、底面放在 Z=0（各方向的支撐面積見 README）
+    for name, part, rot in [("body", body(), Rot(0, 0, 0)),      # 底面朝下（支撐最少的方向）
+                            ("pinion", pinion(), Rot(90, 0, 0)),  # 平放，齒形在層平面上，不用支撐
+                            ("jaw", jaw(), Rot(180, 0, 0))]:      # 齒條背面朝下、齒朝上
+        save(part, f"parallel_gripper_{name}", formats=("step",))
+        printed = rot * part
+        printed = Pos(0, 0, -printed.bounding_box().min.Z) * printed
+        save(printed, f"parallel_gripper_{name}", formats=("stl", "3mf"))
     save(assembly(0), "parallel_gripper_assembly_closed", formats=("step",))
     save(assembly(OPENING), "parallel_gripper_assembly_open", formats=("step",))
