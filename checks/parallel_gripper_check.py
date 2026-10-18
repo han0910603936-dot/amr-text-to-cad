@@ -46,14 +46,16 @@ for i in range(9):
     fb = [f for f in parts["jaw_bottom"].faces() if abs(f.normal_at().X - 1) < 1e-6 and f.area > 1000]
     gap = min(f.center().X for f in fa) - max(f.center().X for f in fb)
     inner = pg.JAW_END + shift - pg.RACK_LEN                 # 齒條內端
-    guide = pg.BODY_HALF_X - max(inner, -pg.BODY_HALF_X)     # 齒條在機身裡的長度
+    outer = pg.JAW_END + shift
+    guide = min(outer, pg.SEAT_HALF) - max(inner, -pg.SEAT_HALF)   # 齒條在齒條座裡的長度
     ok &= not clashes
     print(f"開口 {opening:6.1f} | 夾片間距 {gap:6.1f} | 齒條內端 {inner:6.1f}（越過中心 {-inner:5.1f}）"
           f" | 導引長度 {guide:5.1f} | {'OK' if not clashes else '干涉'} {' '.join(clashes)}")
 
 rack_h = pg.RACK_Z1 - pg.RACK_Z0
-print(f"齒條斷面 {pg.GEAR_W:.1f} × {rack_h:.1f} mm；最短導引長度 / 斷面最大邊 ≈ "
-      f"{(pg.BODY_HALF_X - (pg.JAW_END + pg.STROKE - pg.RACK_LEN)) / max(pg.GEAR_W, rack_h):.1f}（建議 ≥ 2）")
+g_min = min(min(pg.JAW_END + s, pg.SEAT_HALF) - max(pg.JAW_END + s - pg.RACK_LEN, -pg.SEAT_HALF) for s in (0, pg.STROKE))
+print(f"齒條斷面 {pg.RACK_W:.1f} × {rack_h:.1f} mm；最短導引長度 {g_min:.1f} / 斷面最大邊 ≈ "
+      f"{g_min / max(pg.RACK_W, rack_h):.1f}（建議 ≥ 2）")
 
 k = 1.24e-3 * 0.45
 items = [(body_, None), (pin0, None), (jaw0, None), (Rot(0, 180, 0) * jaw0, None), (servo, 55.0), (horn, 8.0)]

@@ -1,19 +1,19 @@
-"""平行夾爪（照使用者照片的結構：小機身、齒條穿出兩側、Z 字形夾爪）。
+"""平行夾爪（照使用者照片的結構：小機身、齒條穿出兩側）。
 
 設計優先順序：機構最簡單、好裝 → 檢查會不會影響功能 → 外觀最後。
 
 零件（3 種）：
-  body    機身：一塊方塊。兩條齒條從左右貫穿的方形隧道裡滑動；中間是小齒輪的圓孔（前面開窗，
-          小齒輪從前面裝）；背面是伺服馬達的口袋（伺服直立、在中心線上）；底面直接鎖手腕 MATRIX 舵盤
-          （機身底面 47 mm 深，跟舵盤前後切齊）。
-  pinion  小齒輪：32 齒、模數 1.5，用 4 顆 M4 鎖在夾爪伺服馬達的 MATRIX 舵盤上
-  jaw     齒條夾爪：齒條在機身裡，外端接一支夾臂，從機身前面繞回中間，夾片往前伸。
+  body    機身：背面是伺服馬達的口袋（伺服直立、在中心線上）；上下兩條齒條座（長 100 mm），
+          齒條座前面不包起來，只在外側留一條擋邊防止齒條往前脫出；小齒輪在正前方露出來，直接裝；
+          底面直接鎖手腕 MATRIX 舵盤（機身底面 47 mm 深，跟舵盤前後切齊）。
+  pinion  小齒輪：44 齒、模數 1.5，用 4 顆 M4 鎖在夾爪伺服馬達的 MATRIX 舵盤上
+  jaw     齒條夾爪：齒條 12×12，夾臂從齒條正面（擋邊下方的開口）接出來，夾片往前伸。
           上下兩支是同一個零件（下面那支繞 Y 軸轉 180°），印 2 個。
 
 座標：X = 開合方向，Y = 往前（夾片方向），Z = 上下。原點 = 小齒輪中心、小齒輪背面。對 X=0 左右對稱。
 
-組裝：小齒輪鎖上舵盤 → 伺服從背面口袋放進去、鎖固定耳 → 舵盤＋小齒輪從前窗裝上伺服軸、鎖中心螺絲
-     → 伺服轉到全關位置 → 兩支齒條夾爪從左右插進隧道 → 舵盤鎖到手腕。
+組裝：小齒輪鎖上舵盤 → 伺服從背面口袋放進去、鎖固定耳 → 舵盤＋小齒輪從前面裝上伺服軸、鎖中心螺絲
+     → 伺服轉到全關位置 → 兩支齒條夾爪從左右滑進齒條座 → 舵盤鎖到手腕。
 
 舵盤：MATRIX RC Servo Horn Wheel（13-0002），尺寸取自官方 Studio 2.0 零件檔 MX13-0002.dat：
 Ø47、厚 3.2、12 個 Ø4.2 孔在 8 mm 格線上。MATRIX 結構螺絲是 M4。
@@ -31,44 +31,51 @@ from build123d import Align, Box, Compound, Cylinder, Pos, Rot
 from cadkit import fasteners as fx
 from cadkit import save
 
-# ---------- 齒輪 ----------
+# ---------- 齒輪（不變）----------
 MODULE = 1.5
 PINION_TEETH = 44                     # 節圓 66；伺服轉 120° 每邊走 69 mm
 PRESSURE_ANGLE = 20.0
-GEAR_W = 8.0
-PITCH_R = MODULE * PINION_TEETH / 2   # 24
+GEAR_W = 8.0                          # 小齒輪齒寬
+PITCH_R = MODULE * PINION_TEETH / 2   # 33
 PITCH = math.pi * MODULE
 SERVO_RANGE_DEG = 120.0               # MG996R 規格書：約 120°
 STROKE = math.radians(SERVO_RANGE_DEG) * PITCH_R   # 每邊 69.1，全開 138.2
 
-# ---------- 機身 ----------
+# ---------- 齒條（加大）----------
 FIT = 0.3
-WALL = 3.0
-BODY_HALF_X = PITCH_R + MODULE + 1.0 + WALL   # 小齒輪孔 + 牆
-BODY_DEPTH = 47.0                     # = 舵盤直徑，底面前後跟舵盤切齊
-FRONT_Y = GEAR_W + FIT + WALL         # 機身前表面 11.3
-BACK_Y = FRONT_Y - BODY_DEPTH         # 機身背面 -35.7
-RACK_BASE = 8.0
-RACK_Z0 = PITCH_R - MODULE            # 齒條齒尖 22.5
-RACK_Z1 = PITCH_R + 1.25 * MODULE + RACK_BASE      # 齒條背面 33.9
-BODY_TOP = RACK_Z1 + FIT + WALL + 2.0  # 上面多 2 mm：伺服固定耳的螺絲孔
-BODY_BOTTOM = -(RACK_Z1 + FIT) - 12.0  # 底下留 12 mm 實心：M4 孔深 9.5，離齒條隧道還有 2.5 mm
-
-# ---------- 齒條夾爪 ----------
-RACK_TEETH = 27                       # 奇數；長 127.2
+RACK_W = 12.0                         # 齒條寬（沿 Y），比小齒輪寬，多出來的增加穩定
+RACK_BASE = 12.0                      # 齒根到齒條背面的厚度
+RACK_Z0 = PITCH_R - MODULE            # 齒尖 31.5
+RACK_ROOT = PITCH_R + 1.25 * MODULE   # 齒根 34.9
+RACK_Z1 = RACK_ROOT + RACK_BASE       # 齒條背面 46.9
+RACK_TEETH = 21                       # 奇數；長 99
 RACK_LEN = RACK_TEETH * PITCH
 _PHASE = 0.5 if PINION_TEETH % 4 == 0 else 0.0
-# 全關時齒條外端的 X：連接塊要整個在機身外，且齒條和小齒輪正上方的齒/齒間對上
-_k = math.floor(RACK_TEETH / 2 + _PHASE - (BODY_HALF_X + 1.0 + 6.0) / PITCH)
-JAW_END = (RACK_TEETH / 2 + _PHASE - _k) * PITCH
-END_W = 6.0                           # 齒條外端往前的連接塊寬（沿 X）
-ARM_GAP = 1.0                         # 夾臂和機身前表面的間隙
+# 全關時齒條外端的 X：齒條和小齒輪正上方的齒/齒間要對上；夾臂接在齒條正面，不受機身限制
+JAW_END = (RACK_TEETH / 2 + _PHASE - 8) * PITCH     # 14.1
+
+# ---------- 機身 ----------
+WALL = 3.0
+SEAT_HALF = 50.0                      # 齒條座長 100 mm
+LIP_H = 4.0                           # 外側擋邊蓋住齒條正面的高度
+LIP_T = 3.0
+LIP_Z0 = RACK_Z1 + FIT - LIP_H        # 擋邊下緣
+FRONT_Y = RACK_W + FIT + LIP_T        # 擋邊前表面 15.3
+BODY_DEPTH = 47.0                     # = 舵盤直徑，底面前後跟舵盤切齊
+BACK_Y = FRONT_Y - BODY_DEPTH         # 機身背面 -31.7
+BODY_TOP = RACK_Z1 + FIT + WALL       # 50.2
+BODY_BOTTOM = -(RACK_Z1 + FIT) - 12.0  # 底下 12 mm 實心：手腕 M4 孔深 9.5，離齒條座 2.5 mm
+CORE_HALF_X = PITCH_R + MODULE + 1.0 + WALL   # 中間（伺服、舵盤）需要的寬度；兩側挖空減重
+
+# ---------- 夾臂、夾片 ----------
+TAB_Z = (RACK_ROOT + 0.3, LIP_Z0 - 0.4)   # 從齒條正面穿出擋邊下方開口的高度
+ARM_GAP = 0.5                         # 夾臂和擋邊前表面的間隙
 ARM_T = 5.0                           # 夾臂厚（沿 Y）
 FINGER_T = 5.0                        # 夾片厚（沿 X）
 FINGER_LEN = 60.0                     # 夾片往前伸出長度
 FINGER_Z = (-35.0, RACK_Z1)           # 夾片上下範圍
 
-# ---------- 夾爪伺服馬達（假設：標準尺寸，直立）----------
+# ---------- 夾爪伺服馬達（MG996R，直立）----------
 SERVO_L, SERVO_W = 40.7, 20.0           # 規格書 40.3 × 20（取大一點）
 SERVO_SHAFT_FROM_END = 10.2           # 軸靠下端，本體往上
 SERVO_EAR_L, SERVO_EAR_T = 54.5, 2.5
@@ -88,6 +95,8 @@ WRIST_Y = (FRONT_Y + BACK_Y) / 2      # 手腕舵盤中心 = 機身底面中心
 
 
 def box(x0, x1, y0, y1, z0, z1):
+    """用座標範圍建立方塊（每個方向的兩個值順序不拘）。"""
+    (x0, x1), (y0, y1), (z0, z1) = sorted((x0, x1)), sorted((y0, y1)), sorted((z0, z1))
     return Pos((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) * Box(x1 - x0, y1 - y0, z1 - z0)
 
 
@@ -103,31 +112,34 @@ def pinion():
 
 
 def jaw():
-    """上方那支（全關）。齒條在隧道裡，外端（+X）在機身外，夾臂從機身前面繞回中間。"""
-    rack = RackGear(MODULE, RACK_TEETH, PRESSURE_ANGLE, thickness=GEAR_W, base_height=RACK_BASE)
-    rack = Pos(JAW_END - RACK_LEN / 2, GEAR_W / 2, PITCH_R) * Rot(180, 0, 0) * rack   # 齒朝下
+    """上方那支（全關）。齒條在齒條座裡，夾臂從齒條正面穿出擋邊下方的開口，夾片往前伸。"""
+    rack = RackGear(MODULE, RACK_TEETH, PRESSURE_ANGLE, thickness=RACK_W, base_height=RACK_BASE)
+    rack = Pos(JAW_END - RACK_LEN / 2, RACK_W / 2, PITCH_R) * Rot(180, 0, 0) * rack   # 齒朝下
     arm_y0 = FRONT_Y + ARM_GAP
-    end = box(JAW_END - END_W, JAW_END, 0, arm_y0 + ARM_T, RACK_Z0, RACK_Z1)
-    arm = box(0, JAW_END, arm_y0, arm_y0 + ARM_T, RACK_Z0, RACK_Z1)
+    tab = box(0, JAW_END, RACK_W - 0.5, arm_y0 + ARM_T, *TAB_Z)          # 齒條正面 → 夾臂
     finger = box(0, FINGER_T, arm_y0, arm_y0 + FINGER_LEN, *FINGER_Z)
-    part = rack + end + arm + finger
+    part = rack + tab + finger
     part.label = "jaw"
     return part
 
 
 def body():
-    part = box(-BODY_HALF_X, BODY_HALF_X, BACK_Y, FRONT_Y, BODY_BOTTOM, BODY_TOP)
-    # 兩條齒條隧道（貫穿左右）
-    z0, z1 = RACK_Z0 - FIT, RACK_Z1 + FIT
-    for zz in ((z0, z1), (-z1, -z0)):
-        part -= box(-BODY_HALF_X - 1, BODY_HALF_X + 1, -FIT, GEAR_W + FIT, *zz)
-    # 小齒輪那一層：方孔直接接通上下兩條隧道（用圓孔會在隧道底留下薄片）
-    gear_r = PITCH_R + MODULE + 1.0
-    part -= box(-gear_r, gear_r, -FIT, GEAR_W + FIT, -(RACK_Z0 - FIT), RACK_Z0 - FIT)
-    # 前窗：小齒輪 + 舵盤從前面裝進去
-    part -= Pos(0, FRONT_Y + 1, 0) * Rot(90, 0, 0) * Cylinder(
-        gear_r, FRONT_Y + 1 - GEAR_W, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    # 舵盤 + 背面螺帽轉動的空間
+    # 後半部：伺服、舵盤所在的實心塊（寬度 = 齒條座長）
+    part = box(-SEAT_HALF, SEAT_HALF, BACK_Y, 0, BODY_BOTTOM, BODY_TOP)
+    # 前半部只有上下兩條齒條座：外側牆 + 擋邊（齒條正面其餘部分露出來）
+    for sign in (1, -1):
+        outer = box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, RACK_Z1 + FIT, BODY_TOP)
+        lip = box(-SEAT_HALF, SEAT_HALF, RACK_W + FIT, FRONT_Y, LIP_Z0, RACK_Z1 + FIT + 0.01)
+        piece = outer + lip
+        if sign == -1:
+            piece = Rot(0, 180, 0) * piece
+            piece += box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, BODY_BOTTOM, -(RACK_Z1 + FIT))  # 底部加厚
+        part += piece
+    # 兩側挖空減重（中間留給伺服和舵盤；上下留牆給齒條座背面）
+    for sx in (1, -1):
+        part -= box(sx * (CORE_HALF_X + 0.5), sx * (SEAT_HALF - WALL), BACK_Y - 1, -WALL,
+                    -(RACK_Z0 - FIT - WALL), RACK_Z0 - FIT - WALL)
+    # 舵盤 + 背面螺帽轉動的空間（小齒輪本身在機身前面）
     part -= Pos(0, 0.01, 0) * Rot(90, 0, 0) * Cylinder(
         HORN_D / 2 + 1.0, HORN_T + HORN_NUT_SPACE, align=(Align.CENTER, Align.CENTER, Align.MIN))
     # 伺服馬達口袋（從背面放進去）：本體 + 固定耳，固定耳前表面靠在座面上
