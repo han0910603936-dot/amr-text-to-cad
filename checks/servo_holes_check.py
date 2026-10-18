@@ -27,4 +27,13 @@ for hx, hy in pg.WRIST_HOLES:
     good = center_empty and wall_solid
     ok2 &= good
     print(f"手腕孔 (x={x:+.1f}, y={y:+.1f})：孔中心空={center_empty} 孔壁實心={wall_solid} → {'OK' if good else '有問題'}")
-sys.exit(0 if (ok and ok2) else 1)
+# 小齒輪的 4 個 M4 孔（同 MATRIX 小舵盤孔位）：從背面（Y=0）往前
+pin = pg.pinion()
+ok3 = True
+for hx, hz in pg.PINION_HOLES:
+    center_empty = not pin.is_inside(Vector(hx, pg.GEAR_W / 2, hz))
+    wall_solid = pin.is_inside(Vector(hx + 2.4, pg.GEAR_W / 2, hz)) if abs(hx) < 1 else pin.is_inside(Vector(hx, pg.GEAR_W / 2, hz + 2.4))
+    good = center_empty and wall_solid
+    ok3 &= good
+    print(f"小齒輪孔 ({hx:+.0f}, {hz:+.0f})：孔中心空={center_empty} 孔壁實心={wall_solid} → {'OK' if good else '有問題'}")
+sys.exit(0 if (ok and ok2 and ok3) else 1)
