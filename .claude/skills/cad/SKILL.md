@@ -80,6 +80,16 @@ python -X utf8 tools/snapshot.py STL/<零件>.stl          # 四視圖存到 tmp
 - 用了哪些假設、需要使用者確認的地方
 - 建議的列印方向和材料（受衝擊用 PETG，原型用 PLA）
 
+## 更新 GitHub（每次修改後都要做）
+
+專案已上傳到私人儲存庫 https://github.com/han0910603936-dot/amr-text-to-cad 。
+使用者要求：**有改到任何檔案，做完並驗證後就 commit 並 push**，不用再問。
+
+1. 在 `README.md` 的「更新紀錄」最上面，用日期加條列寫這次改了什麼。
+2. `git add -A`（`tmp/` 已被忽略），commit 訊息用繁體中文：第一行是摘要，空一行後條列說明改了什麼、為什麼。
+3. `git push`。push 失敗就告訴使用者，不要用 `--force`。
+4. 驗證沒通過、還在修的半成品不要 push。
+
 ## 尚未完成 / 之後再做
 
 - 還沒有印表機：`lib/cadkit/printer.py` 的 `printer`、`bed_mm` 未設定，孔徑也還沒校正。
