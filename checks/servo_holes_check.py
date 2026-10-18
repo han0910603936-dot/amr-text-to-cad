@@ -18,15 +18,17 @@ for dz in (-pg.SERVO_HOLE_DL / 2, pg.SERVO_HOLE_DL / 2):
         ok &= good
         print(f"孔 (x={x:+.1f}, z={z:+.1f})：孔中心空={center_empty} 孔壁實心={wall_solid} 座面實心={seat_solid} → {'OK' if good else '有問題'}")
 
-# 手腕 MATRIX 舵盤的 4 個 M4 孔：從機身底面往上
+# 手腕 MATRIX 舵盤的 4 個 M4 孔：底板上的穿孔 + 上方一路通到頂面的起子通道
 ok2 = True
 for hx, hy in pg.WRIST_HOLES:
     x, y = hx, pg.WRIST_Y + hy
-    center_empty = not body.is_inside(Vector(x, y, pg.BODY_BOTTOM + 5.0))
-    wall_solid = body.is_inside(Vector(x + 3.0, y, pg.BODY_BOTTOM + 5.0))
-    good = center_empty and wall_solid
+    hole_empty = not body.is_inside(Vector(x, y, pg.BODY_BOTTOM + pg.WRIST_WEB / 2))
+    web_solid = body.is_inside(Vector(x + 3.2, y, pg.BODY_BOTTOM + pg.WRIST_WEB / 2))
+    tunnel_open = all(not body.is_inside(Vector(x, y, z))
+                      for z in [pg.BODY_BOTTOM + pg.WRIST_WEB + 1 + k * 5 for k in range(int((pg.BODY_TOP - pg.BODY_BOTTOM - pg.WRIST_WEB) / 5))])
+    good = hole_empty and web_solid and tunnel_open
     ok2 &= good
-    print(f"手腕孔 (x={x:+.1f}, y={y:+.1f})：孔中心空={center_empty} 孔壁實心={wall_solid} → {'OK' if good else '有問題'}")
+    print(f"手腕孔 (x={x:+.1f}, y={y:+.1f})：穿孔空={hole_empty} 底板實心={web_solid} 上方通道通到頂={tunnel_open} → {'OK' if good else '有問題'}")
 # 小齒輪的 4 個 M4 孔（同 MATRIX 小舵盤孔位）：從背面（Y=0）往前
 pin = pg.pinion()
 ok3 = True

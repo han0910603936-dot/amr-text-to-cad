@@ -16,7 +16,8 @@
 
 組裝：小齒輪用 4 顆 M4 從小舵盤背面鎖上 → 伺服從背面口袋放進去、鎖固定耳
      → 小舵盤＋小齒輪從前面裝上伺服軸、從小齒輪中心孔鎖舵盤螺絲
-     → 伺服轉到全關位置 → 兩支齒條夾爪從左右滑進齒條座 → 大舵盤鎖到手腕。
+     → 伺服轉到全關位置 → 兩支齒條夾爪從左右滑進齒條座
+     → 手腕：大舵盤先裝在手腕伺服上 → 夾爪放上去 → 4 顆 M4×12 從機身頂面的通道往下鎖，螺帽在舵盤下面。
 
 MATRIX 零件尺寸都取自官方 Studio 2.0 零件檔（1 LDU = 0.4 mm），結構螺絲是 M4、孔 Ø4.2、8 mm 格線：
   大舵盤 RC Servo Horn Wheel 13-0002：Ø47、厚 3.2
@@ -85,7 +86,10 @@ MICRO_HORN_D, MICRO_HORN_T = 31.0, 1.6
 MICRO_HORN_SPACE = 4.0                # 小舵盤背面 M4 螺絲頭的空間
 PINION_HOLES = [(8.0, 0.0), (-8.0, 0.0), (0.0, 8.0), (0.0, -8.0)]
 HORN_D, HORN_T = 47.0, 3.2            # 手腕大舵盤
-WRIST_HOLES = [(16.0, 0.0), (-16.0, 0.0), (0.0, 16.0), (0.0, -16.0)]
+# 手腕大舵盤用的孔：都在伺服口袋兩側（|x| = 16），螺絲從機身頂面的通道往下鎖，螺帽在舵盤下面
+WRIST_HOLES = [(16.0, 0.0), (-16.0, 0.0), (16.0, -8.0), (-16.0, -8.0)]
+WRIST_WEB = 6.0                       # 機身底板厚：M4×12 = 底板 6 + 舵盤 3.2 + 螺帽
+BUTTON_HEAD_D = 7.6                   # M4 半圓頭螺絲頭直徑（通道要讓它通過）
 WRIST_FRONT_GAP = 3.0                 # 大舵盤前緣在機身前端後面多少
 WRIST_Y = FRONT_Y - WRIST_FRONT_GAP - HORN_D / 2   # 大舵盤中心 Y
 BACK_Y = WRIST_Y - HORN_D / 2         # 機身背面 = 大舵盤後緣（切齊）
@@ -158,9 +162,17 @@ def body():
         for dx in (-SERVO_HOLE_DW / 2, SERVO_HOLE_DW / 2):
             # 孔從固定耳座面往前（+Y）鑽進機身，螺絲從背面口袋鎖進來
             part -= Pos(dx, EAR_FRONT_Y, SERVO_CZ + dz) * Rot(90, 0, 0) * fx.tap_hole("M3", 8)
-    # 手腕 MATRIX 大舵盤：直接鎖在機身底面
+    # 手腕 MATRIX 大舵盤：M4 從上往下穿過底板和舵盤，螺帽在舵盤下面；上方開通道讓起子伸進去
     for hx, hy in WRIST_HOLES:
-        part -= Pos(hx, WRIST_Y + hy, BODY_BOTTOM) * Rot(180, 0, 0) * fx.tap_hole("M4", 9.5)
+        web_top = Pos(hx, WRIST_Y + hy, BODY_BOTTOM + WRIST_WEB)
+        part -= web_top * fx.clearance_hole("M4", WRIST_WEB)
+        part -= web_top * Cylinder((BUTTON_HEAD_D + 1.0) / 2, BODY_TOP - BODY_BOTTOM,
+                                   align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # 同一側的兩條通道靠很近，中間連成一條長槽，避免交界處留下尖薄片
+    tr = (BUTTON_HEAD_D + 1.0) / 2
+    for sx in (1, -1):
+        ys = [WRIST_Y + hy for hx, hy in WRIST_HOLES if hx * sx > 0]
+        part -= box(sx * 16.0 - tr, sx * 16.0 + tr, min(ys), max(ys), BODY_BOTTOM + WRIST_WEB, BODY_TOP + 1)
     part.label = "body"
     return part
 
