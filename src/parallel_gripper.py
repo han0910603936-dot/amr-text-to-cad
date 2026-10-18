@@ -5,6 +5,7 @@
 零件（3 種）：
   body    機身：背面是伺服馬達的口袋（伺服直立、在中心線上）；上下兩條齒條座（長 100 mm），
           齒條座前面不包起來，只在外側留一條擋邊防止齒條往前脫出；小齒輪在正前方露出來，直接裝；
+          後半部（伺服座）寬度和手腕大舵盤一樣 47 mm，後面是圓弧、跟舵盤切齊；
           底面直接鎖手腕 MATRIX 大舵盤（舵盤前緣在機身前端後面，不會超出）。
   pinion  小齒輪：尺寸同 MATRIX 金屬齒輪 24 齒（模數 1、外徑 26、厚 7、中心孔 Ø8），
           固定孔同 MATRIX 小舵盤（(±8,0)、(0,±8)），M4 從舵盤背面鎖進小齒輪
@@ -91,7 +92,6 @@ BACK_Y = WRIST_Y - HORN_D / 2         # 機身背面 = 大舵盤後緣（切齊�
 
 BODY_TOP = SERVO_CZ + SERVO_EAR_L / 2 + FIT + 2.5  # 伺服上方固定耳的螺絲孔要包在裡面
 BODY_BOTTOM = -(RACK_Z1 + FIT) - 12.0  # 底下 12 mm 實心：手腕 M4 孔深 9.5，離齒條座 2.5 mm
-CORE_HALF_X = MICRO_HORN_D / 2 + 1.0 + WALL   # 中間（伺服、舵盤）需要的寬度；兩側挖空減重
 
 # ---------- 夾臂、夾片 ----------
 TAB_Z = (RACK_ROOT + 0.3, LIP_Z0 - 0.4)   # 從齒條正面穿出擋邊下方開口的高度
@@ -130,24 +130,28 @@ def jaw():
 
 
 def body():
-    # 後半部：伺服、舵盤所在的實心塊（寬度 = 齒條座長）
-    part = box(-SEAT_HALF, SEAT_HALF, BACK_Y, 0, BODY_BOTTOM, BODY_TOP)
-    # 前半部只有上下兩條齒條座：外側牆 + 擋邊（齒條正面其餘部分露出來）
+    # 前面：齒條座（長 100）＝ 背板 + 上下外側牆 + 擋邊，底部加厚到跟後面一樣平
+    part = box(-SEAT_HALF, SEAT_HALF, -WALL, 0, BODY_BOTTOM, RACK_Z1 + FIT + WALL)
     top = (box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, RACK_Z1 + FIT, RACK_Z1 + FIT + WALL)
            + box(-SEAT_HALF, SEAT_HALF, RACK_W + FIT, FRONT_Y, LIP_Z0, RACK_Z1 + FIT + 0.01))
     part += top + Rot(0, 180, 0) * top
-    part += box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, BODY_BOTTOM, -(RACK_Z1 + FIT))   # 底面平到前端
-    # 兩側從背面挖空減重（中間留給伺服和舵盤；前面留牆給齒條座背面）
-    for sx in (1, -1):
-        part -= box(sx * (CORE_HALF_X + 0.5), sx * (SEAT_HALF - WALL), BACK_Y - 1, -WALL,
-                    BODY_BOTTOM + 12.0, BODY_TOP - WALL)
+    part += box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, BODY_BOTTOM, -(RACK_Z1 + FIT))
+    # 後面：伺服座，外形是「前方後圓」：寬度 = 手腕大舵盤直徑，後面的圓弧跟舵盤切齊
+    r = HORN_D / 2
+    h = BODY_TOP - BODY_BOTTOM
+    housing = Pos(0, WRIST_Y, BODY_BOTTOM) * Cylinder(r, h, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    housing += box(-r, r, WRIST_Y, -WALL + 0.01, BODY_BOTTOM, BODY_TOP)
+    # 只留背板後面；伺服出口那段圓弧截平，避免口袋側壁和圓弧交會處變成尖薄片（留 2.3 mm）
+    flat_y = WRIST_Y - math.sqrt(r ** 2 - (SERVO_W / 2 + FIT + 2.3) ** 2)
+    housing &= box(-r - 1, r + 1, flat_y, -WALL + 0.01, BODY_BOTTOM, BODY_TOP)
+    part += housing
     # 小舵盤 + 背面螺絲頭轉動的空間（小齒輪本身在機身前面）
     part -= Pos(0, 0.01, 0) * Rot(90, 0, 0) * Cylinder(
         MICRO_HORN_D / 2 + 1.0, MICRO_HORN_T + MICRO_HORN_SPACE, align=(Align.CENTER, Align.CENTER, Align.MIN))
     # 伺服馬達口袋（從背面放進去）：本體 + 固定耳，固定耳前表面靠在座面上
-    ear = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, BACK_Y - 1, EAR_FRONT_Y,
+    ear = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, WRIST_Y - r - 1, EAR_FRONT_Y,
               SERVO_CZ - SERVO_EAR_L / 2 - FIT, SERVO_CZ + SERVO_EAR_L / 2 + FIT)
-    top_case = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, BACK_Y - 1, 0,
+    top_case = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, WRIST_Y - r - 1, 0,
                    SERVO_CZ - SERVO_L / 2 - FIT, SERVO_CZ + SERVO_L / 2 + FIT)
     part -= ear + top_case
     for dz in (-SERVO_HOLE_DL / 2, SERVO_HOLE_DL / 2):
