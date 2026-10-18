@@ -1,0 +1,6 @@
+# 暫存的檢查腳本和截圖
+tmp/
+
+# Python 快取
+__pycache__/
+*.pyc

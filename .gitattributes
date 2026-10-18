@@ -1,0 +1,3 @@
+# 3D 列印檔一律當成二進位檔，不轉換換行
+*.stl binary
+*.3mf binary
