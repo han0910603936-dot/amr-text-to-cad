@@ -1,24 +1,25 @@
-"""平行夾爪（長盒式齒輪齒條）。
+"""平行夾爪（照使用者照片的結構：小機身、齒條穿出兩側、Z 字形夾爪）。
 
-參考 MakerWorld「齿轮齿条平行夹爪」(models/2188993) 與 PapaBravo 的齒輪齒條夾爪 (models/940813)：
-一個長盒把兩條齒條整段包住導引，中間一個小齒輪同時推動兩條齒條反向移動，
-夾爪從前蓋的長槽伸出。盒子兩端兼作全開的機械限位。
+設計優先順序：機構最簡單、好裝 → 檢查會不會影響功能 → 外觀最後。
 
-零件（4 種）：
-  box     長盒：背面裝夾爪伺服馬達（直立、在中心線上），手腕 MATRIX 舵盤直接鎖在盒底、對準重心
-  cover   前蓋：上下兩條長槽讓夾爪伸出，4 角 M3 鎖在盒子兩端
+零件（3 種）：
+  body    機身：一塊方塊。兩條齒條從左右貫穿的方形隧道裡滑動；中間是小齒輪的圓孔（前面開窗，
+          小齒輪從前面裝）；背面是伺服馬達的口袋（伺服直立、在中心線上）；底面直接鎖手腕 MATRIX 舵盤
+          （機身底面 47 mm 深，跟舵盤前後切齊）。
   pinion  小齒輪：32 齒、模數 1.5，用 4 顆 M4 鎖在夾爪伺服馬達的 MATRIX 舵盤上
-  jaw     齒條＋夾片一體：上下兩支是同一個零件（下面那支繞 Y 軸轉 180°），印 2 個
+  jaw     齒條夾爪：齒條在機身裡，外端接一支夾臂，從機身前面繞回中間，夾片往前伸。
+          上下兩支是同一個零件（下面那支繞 Y 軸轉 180°），印 2 個。
 
-座標：X = 開合方向，Y = 往前（夾片伸出方向），Z = 上下。
-原點 = 小齒輪中心、小齒輪背面（貼舵盤那面）。整個夾爪對 X=0 左右對稱。
+座標：X = 開合方向，Y = 往前（夾片方向），Z = 上下。原點 = 小齒輪中心、小齒輪背面。對 X=0 左右對稱。
 
-舵盤：MATRIX RC Servo Horn Wheel（13-0002），尺寸取自官方 Studio 2.0 零件檔 MX13-0002.dat
-（1 LDU = 0.4 mm）：Ø47、厚 3.2、12 個 Ø4.2 孔在 8 mm 格線上。MATRIX 結構螺絲是 M4。
+組裝：小齒輪鎖上舵盤 → 伺服從背面口袋放進去、鎖固定耳 → 舵盤＋小齒輪從前窗裝上伺服軸、鎖中心螺絲
+     → 伺服轉到全關位置 → 兩支齒條夾爪從左右插進隧道 → 舵盤鎖到手腕。
 
-⚠ 假設（要量實物確認，見「夾爪伺服馬達」參數）：
-  - 夾爪伺服馬達是標準尺寸（MG996R 一類，40.7 × 19.7 mm），可轉 180°
-  - 裝上舵盤後，固定耳表面到舵盤上表面 15.5 mm
+舵盤：MATRIX RC Servo Horn Wheel（13-0002），尺寸取自官方 Studio 2.0 零件檔 MX13-0002.dat：
+Ø47、厚 3.2、12 個 Ø4.2 孔在 8 mm 格線上。MATRIX 結構螺絲是 M4。
+
+⚠ 假設（要量實物確認）：夾爪伺服馬達是標準尺寸（MG996R 一類，40.7 × 19.7 mm）、可轉 180°，
+   裝上舵盤後固定耳表面到舵盤上表面 15.5 mm。
 """
 
 import math
@@ -31,64 +32,58 @@ from cadkit import save
 
 # ---------- 齒輪 ----------
 MODULE = 1.5
-PINION_TEETH = 32                     # 節圓直徑 48；4 顆 M4 沉頭孔外還有約 2 mm 到齒根
+PINION_TEETH = 32                     # 節圓 48；伺服轉 180° 每邊走 75 mm
 PRESSURE_ANGLE = 20.0
-GEAR_W = 8.0                          # 齒寬（沿 Y）
+GEAR_W = 8.0
 PITCH_R = MODULE * PINION_TEETH / 2   # 24
 PITCH = math.pi * MODULE
-
-# ---------- 行程 ----------
 SERVO_RANGE_DEG = 180.0
-STROKE = math.radians(SERVO_RANGE_DEG) * PITCH_R   # 每邊 75.4 mm，全開 150.8 mm
+STROKE = math.radians(SERVO_RANGE_DEG) * PITCH_R   # 每邊 75.4，全開 150.8
+
+# ---------- 機身 ----------
+FIT = 0.3
+WALL = 3.0
+BODY_HALF_X = 30.0                    # 機身寬 60（小齒輪孔 Ø53 + 牆）
+BODY_DEPTH = 47.0                     # = 舵盤直徑，底面前後跟舵盤切齊
+FRONT_Y = GEAR_W + FIT + WALL         # 機身前表面 11.3
+BACK_Y = FRONT_Y - BODY_DEPTH         # 機身背面 -35.7
+RACK_BASE = 8.0
+RACK_Z0 = PITCH_R - MODULE            # 齒條齒尖 22.5
+RACK_Z1 = PITCH_R + 1.25 * MODULE + RACK_BASE      # 齒條背面 33.9
+BODY_TOP = RACK_Z1 + FIT + WALL + 2.0  # 上面多 2 mm：伺服固定耳的螺絲孔
+BODY_BOTTOM = -(RACK_Z1 + FIT) - 10.0  # 底下留 10 mm 實心給手腕舵盤的 M4 螺絲
 
 # ---------- 齒條夾爪 ----------
-RACK_TEETH = 21                       # 奇數，長 99 mm
+RACK_TEETH = 27                       # 奇數；長 127.2
 RACK_LEN = RACK_TEETH * PITCH
-RACK_BASE = 8.0                       # 齒根到齒條背面的厚度
-RACK_TOP = PITCH_R + 1.25 * MODULE + RACK_BASE      # 齒條背面（離中心最遠）33.9
-# 夾爪全關時齒條外端的 X：讓齒條和小齒輪正上方的齒/齒間對上
 _PHASE = 0.5 if PINION_TEETH % 4 == 0 else 0.0
-JAW_END = (RACK_TEETH / 2 - 8 + _PHASE) * PITCH     # 14.1
-TAB_Z = (PITCH_R + 1.25 * MODULE + 0.6, RACK_TOP - 1.2)   # 伸出前蓋的凸片高度範圍
-TAB_W = 8.0                           # 凸片沿 X 的寬度
-FINGER_T = 5.0                        # 夾片厚
+# 全關時齒條外端的 X：連接塊要整個在機身外，且齒條和小齒輪正上方的齒/齒間對上
+_k = math.floor(RACK_TEETH / 2 + _PHASE - (BODY_HALF_X + 1.0 + 6.0) / PITCH)
+JAW_END = (RACK_TEETH / 2 + _PHASE - _k) * PITCH
+END_W = 6.0                           # 齒條外端往前的連接塊寬（沿 X）
+ARM_GAP = 1.0                         # 夾臂和機身前表面的間隙
+ARM_T = 5.0                           # 夾臂厚（沿 Y）
+FINGER_T = 5.0                        # 夾片厚（沿 X）
 FINGER_LEN = 60.0                     # 夾片往前伸出長度
-FINGER_H = 35.0                       # 夾片上下範圍 ±35
-FIT = 0.3                             # 滑動間隙
+FINGER_Z = (-35.0, RACK_Z1)           # 夾片上下範圍
 
-# ---------- 長盒 ----------
-WALL = 3.0                            # 上下牆厚
-END_WALL = 6.0                        # 兩端牆厚（兼限位、前蓋螺絲）
-COVER_T = 4.0
-IN_Z = RACK_TOP + FIT                 # 盒內上下 ±34.2
-# 盒內 X 範圍：齒條在全關到全開之間都要在盒內
-IN_X = max(RACK_LEN - JAW_END, JAW_END + STROKE) + 0.5
-COVER_Y0 = GEAR_W + FIT               # 前蓋內面
-BACK_FACE_Y = -FIT                    # 齒條背面滑動面（盒內實心背板的前表面）
-
-# ---------- 夾爪伺服馬達（假設：標準尺寸，直立擺放）----------
-SERVO_L, SERVO_W = 40.7, 19.7         # 本體長（沿 Z，直立）、寬（沿 X）
-SERVO_SHAFT_FROM_END = 10.2           # 輸出軸到本體近端距離（軸靠下端，本體往上，固定耳不會碰到底部墊塊）
+# ---------- 夾爪伺服馬達（假設：標準尺寸，直立）----------
+SERVO_L, SERVO_W = 40.7, 19.7
+SERVO_SHAFT_FROM_END = 10.2           # 軸靠下端，本體往上
+SERVO_EAR_L, SERVO_EAR_T = 54.5, 2.5
 SERVO_HOLE_DL, SERVO_HOLE_DW = 49.5, 10.0
+SERVO_BELOW_EAR = 28.0                # 固定耳以下的本體深度（估重心用）
 FLANGE_TO_HORN_TOP = 15.5
-SERVO_MASS_G = 55.0                   # 估重心用
+SERVO_CZ = SERVO_L / 2 - SERVO_SHAFT_FROM_END
+EAR_FRONT_Y = -FLANGE_TO_HORN_TOP     # 固定耳前表面（貼在口袋底的座面）
 
 # ---------- MATRIX 舵盤 ----------
 HORN_D, HORN_T = 47.0, 3.2
-HORN_HUB_SPACE = 4.0                  # 舵盤背面留給 M4 螺帽的空間
+HORN_NUT_SPACE = 4.0                  # 舵盤背面 M4 螺帽的空間
 BUTTON_HEAD_D, BUTTON_HEAD_H = 7.6, 2.2
 PINION_HOLES = [(16.0, 0.0), (-16.0, 0.0), (0.0, 16.0), (0.0, -16.0)]
-# 手腕舵盤用的孔：要落在盒底實心導引帶（背板背面 ~ 齒條背面之間）的範圍內
-FOOT_HOLES = [(16.0, 0.0), (-16.0, 0.0), (16.0, -8.0), (-16.0, -8.0)]
-FOOT_TAP_DEPTH = 12.0                 # M4×16：舵盤 3.2 + 吃進盒底 12
-FOOT_Y = -4.0                         # 手腕舵盤中心的 Y = 估計重心（見 checks/parallel_gripper_check.py）
-
-# 由上面推算
-BACK_WALL_BACK_Y = -FLANGE_TO_HORN_TOP           # 伺服固定耳貼在背板背面
-SERVO_CZ = SERVO_L / 2 - SERVO_SHAFT_FROM_END    # 伺服本體中心 Z（軸在原點、靠下端）→ 本體往上
-BACK_T = 4.0                          # 背板厚（兩條導引帶之間）
-BAND_Z0 = PITCH_R - MODULE - 1.0      # 導引帶內緣高度（齒條齒尖再往內 1 mm）
-HOUSING_HALF_W = HORN_D / 2 + 1.0 + 4.0   # 中央伺服座半寬
+WRIST_HOLES = [(16.0, 0.0), (-16.0, 0.0), (0.0, 16.0), (0.0, -16.0)]
+WRIST_Y = (FRONT_Y + BACK_Y) / 2      # 手腕舵盤中心 = 機身底面中心
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -103,88 +98,66 @@ def pinion():
         gear -= Pos(x, y, GEAR_W) * fx.clearance_hole("M4", GEAR_W)
         gear -= Pos(x, y, GEAR_W) * Cylinder((BUTTON_HEAD_D + 0.6) / 2, BUTTON_HEAD_H + 0.4,
                                              align=(Align.CENTER, Align.CENTER, Align.MAX))
-    return Rot(-90, 0, 0) * gear      # 軸改成沿 +Y，背面在 Y=0
+    return Rot(-90, 0, 0) * gear      # 軸沿 +Y，背面在 Y=0
 
 
 def jaw():
-    """上方那支（夾爪全關）。齒條在盒內，凸片穿過前蓋，夾片在盒子前面。"""
+    """上方那支（全關）。齒條在隧道裡，外端（+X）在機身外，夾臂從機身前面繞回中間。"""
     rack = RackGear(MODULE, RACK_TEETH, PRESSURE_ANGLE, thickness=GEAR_W, base_height=RACK_BASE)
     rack = Pos(JAW_END - RACK_LEN / 2, GEAR_W / 2, PITCH_R) * Rot(180, 0, 0) * rack   # 齒朝下
-    y_front = COVER_Y0 + COVER_T + 0.5
-    tab = box(JAW_END - TAB_W, JAW_END, GEAR_W - 0.5, y_front + 6.0, *TAB_Z)
-    bridge = box(0, JAW_END, y_front, y_front + 6.0, *TAB_Z)           # 凸片接到夾片
-    finger = box(0, FINGER_T, y_front, y_front + FINGER_LEN, -FINGER_H, FINGER_H)
-    part = rack + tab + bridge + finger
+    arm_y0 = FRONT_Y + ARM_GAP
+    end = box(JAW_END - END_W, JAW_END, 0, arm_y0 + ARM_T, RACK_Z0, RACK_Z1)
+    arm = box(0, JAW_END, arm_y0, arm_y0 + ARM_T, RACK_Z0, RACK_Z1)
+    finger = box(0, FINGER_T, arm_y0, arm_y0 + FINGER_LEN, *FINGER_Z)
+    part = rack + end + arm + finger
     part.label = "jaw"
     return part
 
 
-def body_box():
-    """背面是一整個平面（背面朝下印、免支撐）：齒條後面是實心導引帶，中間挖空。"""
-    x_out = IN_X + END_WALL
-    z_out = IN_Z + WALL
-    shell = box(-x_out, x_out, BACK_WALL_BACK_Y, COVER_Y0, -z_out, z_out)
-    shell += box(-HOUSING_HALF_W / 2, HOUSING_HALF_W / 2, BACK_WALL_BACK_Y, -5.0, z_out - 0.01, z_out + 3.0)  # 固定耳孔加厚
-    shell -= box(-IN_X, IN_X, BACK_FACE_Y, COVER_Y0 + 1, -IN_Z, IN_Z)          # 齒條滑道
-    shell -= box(-IN_X, IN_X, BACK_WALL_BACK_Y + BACK_T, BACK_FACE_Y + 0.01,   # 中間挖空（兩條導引帶之間）
-                 -BAND_Z0, BAND_Z0)
-    # 小齒輪 + 舵盤 + 螺帽 轉動的空間
-    shell -= Pos(0, BACK_FACE_Y + 0.01, 0) * Rot(90, 0, 0) * Cylinder(
-        HORN_D / 2 + 1.0, HORN_T + HORN_HUB_SPACE, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    # 伺服馬達上半部、舵盤軸套穿過背板（固定耳貼在背板背面）
-    shell -= box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, BACK_WALL_BACK_Y - 1, -(HORN_T + HORN_HUB_SPACE),
-                 SERVO_CZ - SERVO_L / 2 - FIT, SERVO_CZ + SERVO_L / 2 + FIT)
+def body():
+    part = box(-BODY_HALF_X, BODY_HALF_X, BACK_Y, FRONT_Y, BODY_BOTTOM, BODY_TOP)
+    # 兩條齒條隧道（貫穿左右）
+    z0, z1 = RACK_Z0 - FIT, RACK_Z1 + FIT
+    for zz in ((z0, z1), (-z1, -z0)):
+        part -= box(-BODY_HALF_X - 1, BODY_HALF_X + 1, -FIT, GEAR_W + FIT, *zz)
+    # 小齒輪那一層：方孔直接接通上下兩條隧道（用圓孔會在隧道底留下薄片）
+    gear_r = PITCH_R + MODULE + 1.0
+    part -= box(-gear_r, gear_r, -FIT, GEAR_W + FIT, -(RACK_Z0 - FIT), RACK_Z0 - FIT)
+    # 前窗：小齒輪 + 舵盤從前面裝進去
+    part -= Pos(0, FRONT_Y + 1, 0) * Rot(90, 0, 0) * Cylinder(
+        gear_r, FRONT_Y + 1 - GEAR_W, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # 舵盤 + 背面螺帽轉動的空間
+    part -= Pos(0, 0.01, 0) * Rot(90, 0, 0) * Cylinder(
+        HORN_D / 2 + 1.0, HORN_T + HORN_NUT_SPACE, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # 伺服馬達口袋（從背面放進去）：本體 + 固定耳，固定耳前表面靠在座面上
+    ear = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, BACK_Y - 1, EAR_FRONT_Y,
+              SERVO_CZ - SERVO_EAR_L / 2 - FIT, SERVO_CZ + SERVO_EAR_L / 2 + FIT)
+    top_case = box(-SERVO_W / 2 - FIT, SERVO_W / 2 + FIT, BACK_Y - 1, 0,
+                   SERVO_CZ - SERVO_L / 2 - FIT, SERVO_CZ + SERVO_L / 2 + FIT)
+    part -= ear + top_case
     for dz in (-SERVO_HOLE_DL / 2, SERVO_HOLE_DL / 2):
         for dx in (-SERVO_HOLE_DW / 2, SERVO_HOLE_DW / 2):
-            shell -= Pos(dx, BACK_WALL_BACK_Y, SERVO_CZ + dz) * Rot(-90, 0, 0) * fx.tap_hole("M3", 10)
-    # 前蓋螺絲（盒子兩端牆，4 角）
-    for sx in (-1, 1):
-        for sz in (-1, 1):
-            shell -= Pos(sx * (IN_X + END_WALL / 2), COVER_Y0, sz * (IN_Z - 4)) * Rot(90, 0, 0)                 * fx.tap_hole("M3", 10)
-    # 手腕 MATRIX 舵盤直接鎖在盒底，中心在 (0, FOOT_Y)；M4 鎖進下方導引帶
-    for hx, hy in FOOT_HOLES:
-        shell -= Pos(hx, FOOT_Y + hy, -z_out) * Rot(180, 0, 0) * fx.tap_hole("M4", FOOT_TAP_DEPTH)
-    shell.label = "box"
-    return shell
-
-
-def cover():
-    x_out = IN_X + END_WALL
-    z_out = IN_Z + WALL
-    part = box(-x_out, x_out, COVER_Y0, COVER_Y0 + COVER_T, -z_out, z_out)
-    # 上槽給上方夾爪（往 +X 開），下槽給下方夾爪（往 -X 開）
-    x0, x1 = JAW_END - TAB_W - 0.6, JAW_END + STROKE + 0.6
-    z0, z1 = TAB_Z[0] - 0.4, TAB_Z[1] + 0.4
-    part -= box(x0, x1, COVER_Y0 - 1, COVER_Y0 + COVER_T + 1, z0, z1)
-    part -= box(-x1, -x0, COVER_Y0 - 1, COVER_Y0 + COVER_T + 1, -z1, -z0)
-    part -= Pos(0, COVER_Y0 + COVER_T, 0) * Rot(-90, 0, 0) * Cylinder(5.0, COVER_T * 3)  # 鎖舵盤中心螺絲
-    for sx in (-1, 1):
-        for sz in (-1, 1):
-            part -= Pos(sx * (IN_X + END_WALL / 2), COVER_Y0 + COVER_T, sz * (IN_Z - 4)) \
-                * Rot(-90, 0, 0) * fx.clearance_hole("M3", COVER_T)
-    part.label = "cover"
+            part -= Pos(dx, EAR_FRONT_Y, SERVO_CZ + dz) * Rot(-90, 0, 0) * fx.tap_hole("M3", 8)
+    # 手腕 MATRIX 舵盤：直接鎖在機身底面
+    for hx, hy in WRIST_HOLES:
+        part -= Pos(hx, WRIST_Y + hy, BODY_BOTTOM) * Rot(180, 0, 0) * fx.tap_hole("M4", 9.5)
+    part.label = "body"
     return part
 
 
 def assembly(opening: float = 0.0):
-    """opening = 兩夾片間距（mm），0 = 全關。"""
     shift = opening / 2
     angle = math.degrees(shift / PITCH_R)
-    parts = [
-        body_box(), cover(),
-        Rot(0, angle, 0) * pinion(),                     # 上方齒條往 +X，齒輪頂端也往 +X
-        Pos(shift, 0, 0) * jaw(),
-        Rot(0, 180, 0) * Pos(shift, 0, 0) * jaw(),
-    ]
-    for p, name in zip(parts, ["box", "cover", "pinion", "jaw_top", "jaw_bottom"]):
+    parts = [body(), Rot(0, angle, 0) * pinion(),       # 上方齒條往 +X，齒輪頂端也往 +X
+             Pos(shift, 0, 0) * jaw(), Rot(0, 180, 0) * Pos(shift, 0, 0) * jaw()]
+    for p, name in zip(parts, ["body", "pinion", "jaw_top", "jaw_bottom"]):
         p.label = name
     return Compound(children=parts, label="parallel_gripper")
 
 
 if __name__ == "__main__":
-    print(f"每邊行程 {STROKE:.1f} mm，全開 {2 * STROKE:.1f} mm（伺服轉 {SERVO_RANGE_DEG:.0f}°）")
-    save(body_box(), "parallel_gripper_box")
-    save(cover(), "parallel_gripper_cover")
+    print(f"每邊行程 {STROKE:.1f} mm，全開 {2 * STROKE:.1f} mm；齒條長 {RACK_LEN:.1f}，全關時外端 X={JAW_END:.1f}")
+    save(body(), "parallel_gripper_body")
     save(pinion(), "parallel_gripper_pinion")
     save(jaw(), "parallel_gripper_jaw")
     save(assembly(0), "parallel_gripper_assembly_closed", formats=("step",))
