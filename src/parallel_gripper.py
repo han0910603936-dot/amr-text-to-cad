@@ -18,8 +18,9 @@
 舵盤：MATRIX RC Servo Horn Wheel（13-0002），尺寸取自官方 Studio 2.0 零件檔 MX13-0002.dat：
 Ø47、厚 3.2、12 個 Ø4.2 孔在 8 mm 格線上。MATRIX 結構螺絲是 M4。
 
-⚠ 假設（要量實物確認）：夾爪伺服馬達是標準尺寸（MG996R 一類，40.7 × 19.7 mm）、可轉 180°，
-   裝上舵盤後固定耳表面到舵盤上表面 15.5 mm。
+夾爪伺服馬達：MG996R（Tower Pro 規格書）：本體 40.3 × 20、固定耳全長 53.6、固定耳下緣離底 26.6、
+   殼頂 36.6、裝舵盤後最高 47.6、可轉約 120°（左右各 60°）。
+   設計以 120° 計算開口；伺服若能轉 180°，程式要限制在 120° 以內（超過齒條會跑出去）。
 """
 
 import math
@@ -32,18 +33,18 @@ from cadkit import save
 
 # ---------- 齒輪 ----------
 MODULE = 1.5
-PINION_TEETH = 32                     # 節圓 48；伺服轉 180° 每邊走 75 mm
+PINION_TEETH = 44                     # 節圓 66；伺服轉 120° 每邊走 69 mm
 PRESSURE_ANGLE = 20.0
 GEAR_W = 8.0
 PITCH_R = MODULE * PINION_TEETH / 2   # 24
 PITCH = math.pi * MODULE
-SERVO_RANGE_DEG = 180.0
-STROKE = math.radians(SERVO_RANGE_DEG) * PITCH_R   # 每邊 75.4，全開 150.8
+SERVO_RANGE_DEG = 120.0               # MG996R 規格書：約 120°
+STROKE = math.radians(SERVO_RANGE_DEG) * PITCH_R   # 每邊 69.1，全開 138.2
 
 # ---------- 機身 ----------
 FIT = 0.3
 WALL = 3.0
-BODY_HALF_X = 30.0                    # 機身寬 60（小齒輪孔 Ø53 + 牆）
+BODY_HALF_X = PITCH_R + MODULE + 1.0 + WALL   # 小齒輪孔 + 牆
 BODY_DEPTH = 47.0                     # = 舵盤直徑，底面前後跟舵盤切齊
 FRONT_Y = GEAR_W + FIT + WALL         # 機身前表面 11.3
 BACK_Y = FRONT_Y - BODY_DEPTH         # 機身背面 -35.7
@@ -68,12 +69,12 @@ FINGER_LEN = 60.0                     # 夾片往前伸出長度
 FINGER_Z = (-35.0, RACK_Z1)           # 夾片上下範圍
 
 # ---------- 夾爪伺服馬達（假設：標準尺寸，直立）----------
-SERVO_L, SERVO_W = 40.7, 19.7
+SERVO_L, SERVO_W = 40.7, 20.0           # 規格書 40.3 × 20（取大一點）
 SERVO_SHAFT_FROM_END = 10.2           # 軸靠下端，本體往上
 SERVO_EAR_L, SERVO_EAR_T = 54.5, 2.5
 SERVO_HOLE_DL, SERVO_HOLE_DW = 49.5, 10.0
 SERVO_BELOW_EAR = 28.0                # 固定耳以下的本體深度（估重心用）
-FLANGE_TO_HORN_TOP = 15.5
+FLANGE_TO_HORN_TOP = 47.6 - 26.6 - 2.5   # 固定耳上表面到舵盤頂面 18.5（規格書）
 SERVO_CZ = SERVO_L / 2 - SERVO_SHAFT_FROM_END
 EAR_FRONT_Y = -FLANGE_TO_HORN_TOP     # 固定耳前表面（貼在口袋底的座面）
 
@@ -91,7 +92,7 @@ def box(x0, x1, y0, y1, z0, z1):
 
 
 def pinion():
-    gear = SpurGear(MODULE, PINION_TEETH, PRESSURE_ANGLE, root_fillet=0.3, thickness=GEAR_W,
+    gear = SpurGear(MODULE, PINION_TEETH, PRESSURE_ANGLE, root_fillet=0.25, thickness=GEAR_W,
                     align=(Align.CENTER, Align.CENTER, Align.MIN))
     gear -= Cylinder(7.0 / 2, GEAR_W, align=(Align.CENTER, Align.CENTER, Align.MIN))   # 舵盤中心螺絲
     for x, y in PINION_HOLES:
