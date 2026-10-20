@@ -1,11 +1,11 @@
-"""平行夾爪檢查：各開合位置的零件干涉、夾片間距、齒條在機身裡的導引長度、整體重心。
+"""平行夾爪檢查：各開合位置的零件干涉（含重疊深度）、會動零件之間的間隙、夾片間距、齒條在機身裡的導引長度、整體重心。
 
     python -X utf8 checks/parallel_gripper_check.py
 
 伺服馬達和舵盤用簡化方塊/圓盤代替，一起檢查會不會撞到。
+間隙：齒條在機身裡滑動、小齒輪和舵盤在機身前轉動，至少要留 GAP mm；齒輪嚙合本來就貼著，不檢查間隙。
 重心估算：列印件 PLA 1.24 g/cm³ × 有效填充 45%，伺服馬達 55 g，MATRIX 小舵盤 4 g。
 """
-import itertools
 import math
 import sys
 from pathlib import Path
@@ -13,6 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import parallel_gripper as pg  # noqa: E402
 from build123d import Align, Cylinder, Pos, Rot  # noqa: E402
+from cadkit.mechanism import check_pairs  # noqa: E402
+
+GAP = 0.2
+MOVING = [("body", "jaw_top"), ("body", "jaw_bottom"), ("body", "pinion"), ("body", "horn"),
+          ("servo", "jaw_top"), ("servo", "jaw_bottom")]
 
 body_, pin0, jaw0 = pg.body(), pg.pinion(), pg.jaw()
 
@@ -35,13 +40,7 @@ for i in range(9):
         "jaw_top": Pos(shift, 0, 0) * jaw0,
         "jaw_bottom": Rot(0, 180, 0) * Pos(shift, 0, 0) * jaw0,
     }
-    clashes = []
-    for (a, pa), (b, pb) in itertools.combinations(parts.items(), 2):
-        if (a, b) == ("pinion", "horn"):
-            continue
-        v = (pa & pb).volume
-        if v > 0.5:
-            clashes.append(f"{a}×{b} {v:.1f}mm³")
+    clashes = check_pairs(parts, gap=GAP, gap_pairs=MOVING, skip=[("pinion", "horn")])
     fa = [f for f in parts["jaw_top"].faces() if abs(f.normal_at().X + 1) < 1e-6 and f.area > 1000]
     fb = [f for f in parts["jaw_bottom"].faces() if abs(f.normal_at().X - 1) < 1e-6 and f.area > 1000]
     gap = min(f.center().X for f in fa) - max(f.center().X for f in fb)
@@ -50,7 +49,9 @@ for i in range(9):
     guide = min(outer, pg.SEAT_HALF) - max(inner, -pg.SEAT_HALF)   # 齒條在齒條座裡的長度
     ok &= not clashes
     print(f"開口 {opening:6.1f} | 夾片間距 {gap:6.1f} | 齒條內端 {inner:6.1f}（越過中心 {-inner:5.1f}）"
-          f" | 導引長度 {guide:5.1f} | {'OK' if not clashes else '干涉'} {' '.join(clashes)}")
+          f" | 導引長度 {guide:5.1f} | {'OK' if not clashes else '有問題'}")
+    for c in clashes:
+        print("    ", c)
 
 rack_h = pg.RACK_Z1 - pg.RACK_Z0
 g_min = min(min(pg.JAW_END + s, pg.SEAT_HALF) - max(pg.JAW_END + s - pg.RACK_LEN, -pg.SEAT_HALF) for s in (0, pg.STROKE))

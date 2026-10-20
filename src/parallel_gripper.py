@@ -37,6 +37,7 @@ from build123d import Align, Box, Compound, Cylinder, Pos, Rot
 
 from cadkit import fasteners as fx
 from cadkit import save
+from cadkit.printprep import save_print
 
 # ---------- 小齒輪（同 MATRIX 24 齒金屬齒輪）----------
 MODULE = 1.0
@@ -195,13 +196,25 @@ def assembly(opening: float = 0.0):
 if __name__ == "__main__":
     print(f"全開 {OPENING:.0f} mm（每邊 {STROKE:.1f}），小齒輪要轉 {PINION_TURN_DEG:.0f}°；"
           f"齒條長 {RACK_LEN:.1f}，全關時外端 X={JAW_END:.1f}")
-    # STEP 用組裝座標；STL/3MF 轉成列印方向、底面放在 Z=0（各方向的支撐面積見 README）
-    for name, part, rot in [("body", body(), Rot(0, 0, 0)),      # 底面朝下（支撐最少的方向）
-                            ("pinion", pinion(), Rot(90, 0, 0)),  # 平放，齒形在層平面上，不用支撐
-                            ("jaw", jaw(), Rot(180, 0, 0))]:      # 齒條背面朝下、齒朝上
-        save(part, f"parallel_gripper_{name}", formats=("step",))
-        printed = rot * part
-        printed = Pos(0, 0, -printed.bounding_box().min.Z) * printed
-        save(printed, f"parallel_gripper_{name}", formats=("stl", "3mf"))
+    # STEP 用組裝座標；列印檔放在 PRINT/parallel_gripper/（轉好方向、排成一盤、附零件清單）
+    parts = {"body": body(), "pinion": pinion(), "jaw": jaw()}
+    for n, part in parts.items():
+        save(part, f"parallel_gripper_{n}", formats=("step",))
+    wrist = fx.pick_screw("M4", WRIST_WEB + HORN_T, nut=True)          # 底板 + 大舵盤，螺帽在舵盤下面
+    gear = fx.pick_screw("M4", MICRO_HORN_T, into=GEAR_W)                # 小舵盤背面鎖進小齒輪
+    ear = fx.pick_screw("M3", SERVO_EAR_T, into=8.0)                     # 伺服固定耳鎖進機身
+    save_print("parallel_gripper", [
+        ("機身", parts["body"], 1, Rot(0, 0, 0)),        # 底面朝下，6 個方向裡支撐最少
+        ("小齒輪", parts["pinion"], 1, "auto"),
+        ("夾爪", parts["jaw"], 2, "auto"),
+    ], bom=[
+        ("伺服馬達 MG996R（360°）", 1, "驅動小齒輪"),
+        ("MATRIX 小舵盤 13-0012", 1, "伺服 ↔ 小齒輪"),
+        ("MATRIX 大舵盤 13-0002", 1, "手腕伺服 ↔ 機身（手腕上原本那個）"),
+        (f"M4×{wrist['length']} 內六角螺絲", len(WRIST_HOLES), "機身底板鎖大舵盤（從側窗放、上方細孔鎖）"),
+        ("M4 螺帽", len(WRIST_HOLES), "套在大舵盤下面"),
+        (f"M4×{gear['length']} 螺絲", len(PINION_HOLES), "小舵盤鎖小齒輪"),
+        (f"M3×{ear['length']} 螺絲", 4, "伺服固定耳鎖機身"),
+    ])
     save(assembly(0), "parallel_gripper_assembly_closed", formats=("step",))
     save(assembly(OPENING), "parallel_gripper_assembly_open", formats=("step",))

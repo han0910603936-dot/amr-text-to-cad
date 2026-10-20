@@ -40,22 +40,38 @@ def support_area(mesh: trimesh.Trimesh, angle_limit: float) -> tuple[float, np.n
     return float(mesh.area_faces[needs].sum()), needs
 
 
+TAPER_DOT = -0.9   # 兩面法線夾角超過約 25° 就算「變尖的邊」，不是平行的牆
+
+
 def wall_thickness(mesh: trimesh.Trimesh, samples: int) -> dict:
-    """在表面隨機取點，沿法線往內打射線，量到對面的距離。"""
+    """在表面隨機取點，沿法線往內打射線，量到對面的距離。
+
+    同時看對面那個面的方向（做法參考 openscad-skill 的 --walls）：
+    - 兩面差不多平行 → 「平均的牆」，真的太薄要修
+    - 兩面有夾角（齒尖、倒角、楔形） → 「變尖的邊」，本來就會越來越薄，通常沒關係
+    """
     points, faces = trimesh.sample.sample_surface(mesh, samples, seed=0)
     normals = mesh.face_normals[faces]
     origins = points - normals * 1e-3
-    hits, ray_idx, _ = mesh.ray.intersects_location(origins, -normals, multiple_hits=False)
+    hits, ray_idx, tri_idx = mesh.ray.intersects_location(origins, -normals, multiple_hits=False)
     if len(hits) == 0:
         return {"error": "射線沒有打到任何面"}
     dist = np.linalg.norm(hits - origins[ray_idx], axis=1)
+    dots = np.einsum("ij,ij->i", normals[ray_idx], mesh.face_normals[tri_idx])
+    even = dots < TAPER_DOT
     order = np.argsort(dist)
+    wall = dist[even] if even.any() else dist
+    order_even = order[even[order]]
+    lim = PROFILE["min_wall_mm"]
+    taper_thin = (~even) & (dist < lim)
     return {
         "samples": int(len(dist)),
-        "min_mm": round(float(dist[order[0]]), 2),
-        "p05_mm": round(float(np.percentile(dist, 5)), 2),
+        "min_mm": round(float(wall.min()), 2),
+        "p05_mm": round(float(np.percentile(wall, 5)), 2),
         "median_mm": round(float(np.median(dist)), 2),
-        "thinnest_at": [[round(float(v), 1) for v in points[ray_idx[i]]] for i in order[:3]],
+        "thinnest_at": [[round(float(v), 1) for v in points[ray_idx[i]]] for i in order_even[:3]],
+        "taper_thin_count": int(taper_thin.sum()),
+        "taper_min_mm": round(float(dist[~even].min()), 2) if (~even).any() else None,
     }
 
 
@@ -114,10 +130,13 @@ def judge(facts: dict) -> list[tuple[str, str, str]]:
         out.append(("❌", "牆厚", f"最薄 {wall['min_mm']} mm、5% 分位 {wall['p05_mm']} mm，低於 {lim} mm；"
                                   f"最薄處約在 {wall['thinnest_at'][0]}"))
     elif wall["min_mm"] < lim:
-        out.append(("❓", "牆厚", f"5% 分位 {wall['p05_mm']} mm 合格，但有取樣點只有 {wall['min_mm']} mm"
-                                  f"（約在 {wall['thinnest_at'][0]}），可能是倒角或邊緣"))
+        out.append(("❓", "牆厚", f"5% 分位 {wall['p05_mm']} mm 合格，但有平行牆的取樣點只有 {wall['min_mm']} mm"
+                                  f"（約在 {wall['thinnest_at'][0]}），用 tools/section.py 切過去看"))
     else:
-        out.append(("✅", "牆厚", f"最薄 {wall['min_mm']} mm（標準 ≥ {lim} mm）"))
+        out.append(("✅", "牆厚", f"平行的牆最薄 {wall['min_mm']} mm（標準 ≥ {lim} mm）"))
+    if wall.get("taper_thin_count"):
+        out.append(("ℹ️", "變尖的邊", f"{wall['taper_thin_count']} 個取樣點在齒尖、倒角這種斜面交會處，最薄 "
+                                    f"{wall['taper_min_mm']} mm；本來就會變尖，通常沒關係"))
 
     area = facts["support_area_mm2"]
     best = facts["orientations"][0]

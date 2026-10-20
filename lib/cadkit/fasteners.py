@@ -31,6 +31,16 @@ HEAT_SET = {
     "M3": {"hole": 3.9, "length": 4.0},
 }
 
+# 內六角圓柱頭螺絲（ISO 4762）常見買得到的長度（mm），以及螺距
+STOCK_LENGTHS = {
+    "M2":   [3, 4, 5, 6, 8, 10, 12, 16, 20],
+    "M2.5": [4, 5, 6, 8, 10, 12, 16, 20, 25],
+    "M3":   [4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35, 40],
+    "M4":   [5, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35, 40],
+    "M5":   [6, 8, 10, 12, 14, 16, 20, 25, 30, 35, 40],
+}
+PITCH = {"M2": 0.4, "M2.5": 0.45, "M3": 0.5, "M4": 0.7, "M5": 0.8}
+
 NUT_CLEARANCE = 0.3   # 螺帽槽對邊寬多留的空隙
 HEAD_CLEARANCE = 0.5  # 沉頭孔直徑多留的空隙
 
@@ -80,3 +90,33 @@ def heat_set_hole(size: str):
     except KeyError:
         raise ValueError(f"熱熔螺母目前只有 {', '.join(HEAT_SET)} 的資料") from None
     return _hole(s["hole"], s["length"] + 1.0)
+
+
+def pick_screw(size: str, grip: float, nut: bool = False, into: float | None = None) -> dict:
+    """挑買得到的螺絲長度（做法參考 openscad-skill 的 hardware.py pick）。
+
+    grip：螺絲頭底面到被夾零件最遠那一面的厚度。
+    nut=True：後面鎖螺帽，挑「穿過螺帽再多 2 牙」的最短長度。
+    into=深度：直接鎖進塑膠孔，挑「不會頂到孔底（留 0.5 mm）」的最長長度。
+    """
+    s, lengths, pitch = _spec(size), STOCK_LENGTHS[size], PITCH[size]
+    if nut:
+        need = grip + s["nut_h"] + 2 * pitch
+        ok = [L for L in lengths if L >= need]
+        if not ok:
+            raise ValueError(f"{size}：需要 ≥ {need:.1f} mm，超過常見長度 {lengths[-1]} mm")
+        L = ok[0]
+        res = {"size": size, "length": L, "engage_mm": min(L - grip, s["nut_h"]), "stick_out_mm": L - grip - s["nut_h"]}
+        note = f"螺帽全部吃到，凸出螺帽 {res['stick_out_mm']:.1f} mm"
+    elif into is not None:
+        ok = [L for L in lengths if L - grip <= into - 0.5 and L > grip]
+        if not ok:
+            raise ValueError(f"{size}：夾住 {grip} mm、孔深 {into} mm，找不到不會頂到底的長度")
+        L = ok[-1]
+        res = {"size": size, "length": L, "engage_mm": L - grip}
+        note = f"鎖進塑膠 {res['engage_mm']:.1f} mm" + ("（少於直徑的 1.5 倍，可能不夠牢）"
+                                                      if res["engage_mm"] < 1.5 * float(size[1:]) else "")
+    else:
+        raise ValueError("要指定 nut=True 或 into=孔深")
+    print(f"{size}×{L}：夾住 {grip:.1f} mm，{note}")
+    return res
