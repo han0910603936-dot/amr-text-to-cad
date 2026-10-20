@@ -8,7 +8,7 @@
 
 > 做一個 RPLIDAR A1 的支架，把光達墊高 80mm，底部用 4 顆 M3 鎖在底盤上，中間留穿線孔。
 
-Claude 會照 `.claude/skills/cad/SKILL.md` 的流程做：建模 → 量尺寸 → 列印檢查 → 截圖自我檢查 → 打開預覽。
+Claude 會照 `.claude/skills/cad/SKILL.md` 的流程做：先研究參考、講構想 → 外形 → 細節 → 完成，每個階段都會給你看圖，你說好才繼續。
 
 改尺寸時講「哪裡、改多少」就好，例如「立板加高 10mm」「孔太緊，放大 0.3mm」。
 怎麼寫提示詞可以參考 `研究筆記.md`。
@@ -19,9 +19,11 @@ Claude 會照 `.claude/skills/cad/SKILL.md` 的流程做：建模 → 量尺寸 
 |---|---|
 | `src/` | 每個零件的建模程式（一個零件一個檔） |
 | `STEP/` | STEP 檔：可以匯入其他 CAD 軟體 |
-| `STL/`、`3MF/` | 給切片軟體的列印檔 |
-| `lib/cadkit/` | 共用工具：存檔、螺絲孔、列印限制 |
-| `tools/` | 列印檢查、截圖、預覽器 |
+| `PRINT/` | **要印就看這裡**：每個機構一個資料夾，零件已轉好列印方向，附整盤 3MF 和零件清單 |
+| `STL/`、`3MF/` | 單一零件的列印檔 |
+| `lib/cadkit/` | 共用工具：存檔、螺絲孔與螺絲長度、列印限制、機構檢查、列印資料夾 |
+| `tools/` | 列印檢查、截圖、剖面圖、預覽器 |
+| `checks/` | 各機構的固定檢查（干涉、間隙、孔位） |
 | `tmp/` | 暫存的檢查檔和截圖，可以隨時刪 |
 
 ## 自己執行（不透過 Claude 也可以）
@@ -36,6 +38,9 @@ C:\Users\jeff2\.cad3d\venv\Scripts\python.exe -X utf8 tools\dfm_check.py STL\l_b
 ```
 ```bash
 C:\Users\jeff2\.cad3d\venv\Scripts\python.exe -X utf8 tools\view.py STEP\l_bracket.step
+```
+```bash
+C:\Users\jeff2\.cad3d\venv\Scripts\python.exe -X utf8 tools\section.py STEP\parallel_gripper_assembly_closed.step --y 6
 ```
 
 預覽網址：http://127.0.0.1:3939/viewer
@@ -77,9 +82,27 @@ C:\Users\jeff2\.cad3d\venv\Scripts\python.exe -X utf8 tools\view.py STEP\l_brack
 - 建模：[build123d](https://github.com/gumyr/build123d)、[bd_warehouse](https://github.com/gumyr/bd_warehouse)
 - 預覽器：[OCP CAD Viewer](https://github.com/bernhard-42/vscode-ocp-cad-viewer)（ocp_viewer）
 - 網格分析：[trimesh](https://github.com/mikedh/trimesh)
+- 2026-10-21 參考（只學做法，沒有複製程式）：
+  [pthompson8594/openscad-skill](https://github.com/pthompson8594/openscad-skill)（MIT-0）螺絲長度、鎖得到、剖面、列印資料夾、零件清單、薄牆分類；
+  [cyberchitta/cad-khana](https://github.com/cyberchitta/cad-khana)（Apache-2.0）間隙檢查、「檢查通過不代表沒問題」、修錯變固定檢查；
+  [flowful-ai/cad-skill](https://github.com/flowful-ai/cad-skill)（PolyForm 非商業）分階段給使用者看、精簡列印建議、參數表；
+  [fed3c3sa/claude-cad](https://github.com/fed3c3sa/claude-cad) 獨立檢查的想法
 - 研究過程和數值來源見 `研究筆記.md`。
 
 ## 更新紀錄
+
+### 2026-10-21（參考 4 個 CAD 技能，加強檢查和列印工具）
+- 工作方式改成：外形 → 細節 → 完成，每個階段都給使用者看、同意才繼續，全部用中文
+- 技能說明新增「組裝與檢查規則」：每顆螺絲要鎖得到、先挑螺絲長度、會動零件要留間隙、看重疊深度、
+  修過的錯變固定檢查、檢查通過不代表沒問題、同一問題修 3～5 次沒好就停下來討論
+- `fasteners.pick_screw()`：挑買得到的螺絲長度，算螺帽吃幾牙或鎖進塑膠多深
+- `cadkit/mechanism.py`：重疊深度與位置、會動零件之間的最小間隙
+- `tools/section.py`：剖面圖，每個零件一色、重疊標紅，印出零件範圍和小間隙
+- `cadkit/printprep.py`：`PRINT/<名稱>/` 列印資料夾（自動挑列印方向、整盤 3MF、零件清單 CSV）
+- `dfm_check.py`：薄牆分成「平行的牆」（真的太薄）和「變尖的邊」（齒尖、倒角，通常沒關係）
+- 夾爪列印檔改放 `PRINT/parallel_gripper/`，刪掉 `STL/`、`3MF/` 裡舊的夾爪檔
+- ⚠ 新檢查在夾爪上找到 2 個問題（還沒改，等確認）：
+  齒條背面貼著機身背板、間隙 0 mm；小齒輪 M4 孔到齒根只剩 1.0 mm
 
 ### 2026-10-18（夾爪列印檔改成列印方向）
 - STL / 3MF 直接存成列印方向、底面在 Z=0，丟進切片軟體就能印；STEP 仍是組裝座標
