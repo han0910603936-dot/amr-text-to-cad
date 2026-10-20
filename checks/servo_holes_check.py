@@ -3,7 +3,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import parallel_gripper as pg
-from build123d import Vector
+from build123d import Face, Plane, Vector, Vertex
+from cadkit import fasteners as fx
 
 body = pg.body()
 ok = True
@@ -32,13 +33,16 @@ for hx, hy in pg.WRIST_HOLES:
     good = hole_empty and web_solid and window_open and driver_open
     ok2 &= good
     print(f"手腕孔 (x={x:+.1f}, y={y:+.1f})：穿孔空={hole_empty} 底板實心={web_solid} 側窗通到外面={window_open} 上方細孔通到頂={driver_open} → {'OK' if good else '有問題'}")
-# 小齒輪的 4 個 M4 孔（同 MATRIX 小舵盤孔位）：從背面（Y=0）往前
+# 小齒輪的 4 個孔（同 MATRIX 小舵盤孔位）：從背面（Y=0）往前；孔邊到齒輪外形要 ≥ 1.2 mm（M4 時只剩 1.14 會裂）
 pin = pg.pinion()
+gear_blank = pin
 ok3 = True
 for hx, hz in pg.PINION_HOLES:
     center_empty = not pin.is_inside(Vector(hx, pg.GEAR_W / 2, hz))
     wall_solid = pin.is_inside(Vector(hx + 2.4, pg.GEAR_W / 2, hz)) if abs(hx) < 1 else pin.is_inside(Vector(hx, pg.GEAR_W / 2, hz + 2.4))
-    good = center_empty and wall_solid
+    outline = (gear_blank & Face.make_rect(100, 100, Plane.XZ.offset(-pg.GEAR_W / 2))).faces()[0].outer_wire()
+    rim = outline.distance_to(Vertex(hx, pg.GEAR_W / 2, hz)) - fx.METRIC[pg.PINION_SCREW]["tap"] / 2
+    good = center_empty and wall_solid and rim >= 1.2
     ok3 &= good
-    print(f"小齒輪孔 ({hx:+.0f}, {hz:+.0f})：孔中心空={center_empty} 孔壁實心={wall_solid} → {'OK' if good else '有問題'}")
+    print(f"小齒輪孔 ({hx:+.0f}, {hz:+.0f})：孔中心空={center_empty} 孔壁實心={wall_solid} 孔邊到齒形 {rim:.2f} mm → {'OK' if good else '有問題'}")
 sys.exit(0 if (ok and ok2 and ok3) else 1)

@@ -8,13 +8,14 @@
           後半部（伺服座）寬度和手腕大舵盤一樣 47 mm，後面是圓弧、跟舵盤切齊；
           底面直接鎖手腕 MATRIX 大舵盤（舵盤前緣在機身前端後面，不會超出）。
   pinion  小齒輪：尺寸同 MATRIX 金屬齒輪 24 齒（模數 1、外徑 26、厚 7、中心孔 Ø8），
-          固定孔同 MATRIX 小舵盤（(±8,0)、(0,±8)），M4 從舵盤背面鎖進小齒輪
+          固定孔同 MATRIX 小舵盤（(±8,0)、(0,±8)），M3 從舵盤背面鎖進小齒輪
+          （M4 自攻孔到齒根只剩 1.14 mm 容易裂，改 M3 剩 1.59 mm；舵盤的 Ø4.2 孔 M3 一樣穿得過）
   jaw     齒條夾爪：模數 1 齒條 12×12，夾臂從齒條正面（擋邊下方的開口）接出來，夾片往前伸。
           上下兩支是同一個零件（下面那支繞 Y 軸轉 180°），印 2 個。
 
 座標：X = 開合方向，Y = 往前（夾片方向），Z = 上下。原點 = 小齒輪中心、小齒輪背面。對 X=0 左右對稱。
 
-組裝：小齒輪用 4 顆 M4 從小舵盤背面鎖上 → 伺服從背面口袋放進去、鎖固定耳
+組裝：小齒輪用 4 顆 M3 從小舵盤背面鎖上 → 伺服從背面口袋放進去、鎖固定耳
      → 小舵盤＋小齒輪從前面裝上伺服軸、從小齒輪中心孔鎖舵盤螺絲
      → 伺服轉到全關位置 → 兩支齒條夾爪從左右滑進齒條座
      → 手腕：大舵盤先裝在手腕伺服上 → 夾爪放上去 → 4 顆 M4×12 從機身底部兩側的窗口放進去，
@@ -72,6 +73,7 @@ LIP_H = 6.0                           # 外側擋邊蓋住齒條正面的高度
 LIP_T = 3.0
 LIP_Z0 = RACK_Z1 + FIT - LIP_H        # 擋邊下緣
 FRONT_Y = RACK_W + FIT + LIP_T        # 擋邊前表面 15.3
+SEAT_Y = -FIT                         # 背板前表面：齒條背面（Y=0）和背板之間也留 FIT
 
 # ---------- 夾爪伺服馬達（外形 MG996R，直立）----------
 SERVO_L, SERVO_W = 40.7, 20.0
@@ -85,8 +87,9 @@ EAR_FRONT_Y = -FLANGE_TO_HORN_TOP     # 固定耳前表面（貼在口袋底的�
 
 # ---------- MATRIX 舵盤 ----------
 MICRO_HORN_D, MICRO_HORN_T = 31.0, 1.6
-MICRO_HORN_SPACE = 4.0                # 小舵盤背面 M4 螺絲頭的空間
+MICRO_HORN_SPACE = 4.0                # 小舵盤背面螺絲頭的空間
 PINION_HOLES = [(8.0, 0.0), (-8.0, 0.0), (0.0, 8.0), (0.0, -8.0)]
+PINION_SCREW = "M3"                   # 孔位已對在齒的正下方（最厚處）
 HORN_D, HORN_T = 47.0, 3.2            # 手腕大舵盤
 # 手腕大舵盤用的孔：都在伺服口袋兩側（|x| = 16），螺絲從底部側面窗口放進去往下鎖，螺帽在舵盤下面
 WRIST_HOLES = [(16.0, 0.0), (-16.0, 0.0), (16.0, -8.0), (-16.0, -8.0)]
@@ -121,7 +124,7 @@ def pinion():
                     align=(Align.CENTER, Align.CENTER, Align.MIN))
     gear -= Cylinder(GEAR_BORE / 2, GEAR_W, align=(Align.CENTER, Align.CENTER, Align.MIN))   # 同 MATRIX 齒輪
     for x, y in PINION_HOLES:
-        gear -= Pos(x, y, 0) * Rot(180, 0, 0) * fx.tap_hole("M4", GEAR_W)   # 從背面（舵盤側）往前
+        gear -= Pos(x, y, 0) * Rot(180, 0, 0) * fx.tap_hole(PINION_SCREW, GEAR_W)   # 從背面（舵盤側）往前
     return Rot(-90, 0, 0) * gear      # 軸沿 +Y，背面在 Y=0
 
 
@@ -139,19 +142,19 @@ def jaw():
 
 def body():
     # 前面：齒條座（長 100）＝ 背板 + 上下外側牆 + 擋邊，底部加厚到跟後面一樣平
-    part = box(-SEAT_HALF, SEAT_HALF, -WALL, 0, BODY_BOTTOM, RACK_Z1 + FIT + WALL)
-    top = (box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, RACK_Z1 + FIT, RACK_Z1 + FIT + WALL)
+    part = box(-SEAT_HALF, SEAT_HALF, SEAT_Y - WALL, SEAT_Y, BODY_BOTTOM, RACK_Z1 + FIT + WALL)
+    top = (box(-SEAT_HALF, SEAT_HALF, SEAT_Y - 0.01, FRONT_Y, RACK_Z1 + FIT, RACK_Z1 + FIT + WALL)
            + box(-SEAT_HALF, SEAT_HALF, RACK_W + FIT, FRONT_Y, LIP_Z0, RACK_Z1 + FIT + 0.01))
     part += top + Rot(0, 180, 0) * top
-    part += box(-SEAT_HALF, SEAT_HALF, -0.01, FRONT_Y, BODY_BOTTOM, -(RACK_Z1 + FIT))
+    part += box(-SEAT_HALF, SEAT_HALF, SEAT_Y - 0.01, FRONT_Y, BODY_BOTTOM, -(RACK_Z1 + FIT))
     # 後面：伺服座，外形是「前方後圓」：寬度 = 手腕大舵盤直徑，後面的圓弧跟舵盤切齊
     r = HORN_D / 2
     h = BODY_TOP - BODY_BOTTOM
     housing = Pos(0, WRIST_Y, BODY_BOTTOM) * Cylinder(r, h, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    housing += box(-r, r, WRIST_Y, -WALL + 0.01, BODY_BOTTOM, BODY_TOP)
+    housing += box(-r, r, WRIST_Y, SEAT_Y - WALL + 0.01, BODY_BOTTOM, BODY_TOP)
     # 只留背板後面；伺服出口那段圓弧截平，避免口袋側壁和圓弧交會處變成尖薄片（留 2.3 mm）
     flat_y = WRIST_Y - math.sqrt(r ** 2 - (SERVO_W / 2 + FIT + 2.3) ** 2)
-    housing &= box(-r - 1, r + 1, flat_y, -WALL + 0.01, BODY_BOTTOM, BODY_TOP)
+    housing &= box(-r - 1, r + 1, flat_y, SEAT_Y - WALL + 0.01, BODY_BOTTOM, BODY_TOP)
     part += housing
     # 小舵盤 + 背面螺絲頭轉動的空間（小齒輪本身在機身前面）
     part -= Pos(0, 0.01, 0) * Rot(90, 0, 0) * Cylinder(
@@ -176,8 +179,8 @@ def body():
                                                           align=(Align.CENTER, Align.CENTER, Align.MIN))
     for sx in (1, -1):
         ys = [WRIST_Y + hy for hx, hy in WRIST_HOLES if hx * sx > 0]
-        # 窗口往後多開 3 mm，讓它乾淨地切穿後面的圓弧（不然邊緣會留下薄片）
-        part -= box(sx * (16.0 - tr), sx * (HORN_D / 2 + 2.0), min(ys) - tr - 3.0, max(ys) + tr,
+        # 窗口往後一路開穿機身背面：只多開 3 mm 時，窗口後面和圓弧幾乎相切，會留下 0.03 mm 的尖薄片
+        part -= box(sx * (16.0 - tr), sx * (HORN_D / 2 + 2.0), BACK_Y - 1.0, max(ys) + tr,
                     web_top, web_top + WRIST_WINDOW_H)
     part.label = "body"
     return part
@@ -201,7 +204,7 @@ if __name__ == "__main__":
     for n, part in parts.items():
         save(part, f"parallel_gripper_{n}", formats=("step",))
     wrist = fx.pick_screw("M4", WRIST_WEB + HORN_T, nut=True)          # 底板 + 大舵盤，螺帽在舵盤下面
-    gear = fx.pick_screw("M4", MICRO_HORN_T, into=GEAR_W)                # 小舵盤背面鎖進小齒輪
+    gear = fx.pick_screw(PINION_SCREW, MICRO_HORN_T, into=GEAR_W)                # 小舵盤背面鎖進小齒輪
     ear = fx.pick_screw("M3", SERVO_EAR_T, into=8.0)                     # 伺服固定耳鎖進機身
     save_print("parallel_gripper", [
         ("機身", parts["body"], 1, Rot(0, 0, 0)),        # 底面朝下，6 個方向裡支撐最少
@@ -213,7 +216,7 @@ if __name__ == "__main__":
         ("MATRIX 大舵盤 13-0002", 1, "手腕伺服 ↔ 機身（手腕上原本那個）"),
         (f"M4×{wrist['length']} 內六角螺絲", len(WRIST_HOLES), "機身底板鎖大舵盤（從側窗放、上方細孔鎖）"),
         ("M4 螺帽", len(WRIST_HOLES), "套在大舵盤下面"),
-        (f"M4×{gear['length']} 螺絲", len(PINION_HOLES), "小舵盤鎖小齒輪"),
+        (f"{PINION_SCREW}×{gear['length']} 螺絲", len(PINION_HOLES), "小舵盤鎖小齒輪"),
         (f"M3×{ear['length']} 螺絲", 4, "伺服固定耳鎖機身"),
     ])
     save(assembly(0), "parallel_gripper_assembly_closed", formats=("step",))
